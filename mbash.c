@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <sys/wait.h>
 #include <dirent.h>
+#include <stdbool.h>
 
 #define MAXLI 2048  // longeur maximale d'une ligne de commande
 bool info = true;
