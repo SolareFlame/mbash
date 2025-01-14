@@ -8,6 +8,10 @@
 
 #define MAXLI 2048  // longeur maximale d'une ligne de commande
 
+/*
+COMMANDS FUNCTIONS
+*/
+
 // cd
 void change_directory(char *path) {
     if (path == NULL) {
@@ -17,16 +21,34 @@ void change_directory(char *path) {
     }
 }
 
-// prompt printer
-void print_prompt() {
-    char cwd[MAXLI];
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        printf("%s § ", cwd);
-    } else {
-        printf("§ ");
+//ls
+void list_directory(char *path) {
+    struct dirent *entry;
+    DIR *dir;
+
+    if ((dir = opendir(path)) == NULL) {
+        perror("mbash");
+        return;
     }
+
+    while ((entry = readdir(dir)) != NULL) {
+        printf("%s ", entry->d_name);
+    }
+    printf("\n");
+
+    closedir(dir);
 }
 
+// pwd
+void print_working_directory() {
+    char cwd[MAXLI];
+
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("%s", cwd);
+    } else {
+        perror("mbash");
+    }
+}
 
 void execute(char *cmd) {
     char *args[MAXLI + 1];
@@ -65,29 +87,9 @@ void execute(char *cmd) {
 
     //ls
     if(strcmp(args[0], "ls") == 0) {
-        struct dirent *entry;
-        DIR *dir;
-
-        // wd si pas de path
-        const char *path = args[1] ? args[1] : ".";
-
-        // ouverture du dossier
-        if ((dir = opendir(path)) == NULL) {
-            perror("mbash");
-            return;
-        }
-
-        // lecture de chaque entrée du wd
-        while ((entry = readdir(dir)) != NULL) {
-            printf("%s ", entry->d_name);
-        }
-        printf("\n");
-
-        closedir(dir);
-
+        list_directory(args[1]);
         return;
     }
-
 
     // cd
     if (strcmp(args[0], "cd") == 0) {
@@ -97,20 +99,16 @@ void execute(char *cmd) {
 
     // pwd
     if (strcmp(args[0], "pwd") == 0) {
-        char cwd[MAXLI];
-
-        if (getcwd(cwd, sizeof(cwd)) != NULL) {
-            printf("%s\n", cwd);
-        } else {
-            perror("pwd");
-        }
+        print_working_directory();
+        printf("\n");
         return;
     }
+*
 
-
-    // OTHERS
+    /*
+    /BIN/ COMMANDS CALL
+    */
     pid = fork();
-
 
     if (pid == 0) {
         if (execve(args[0], args, envp) == -1) {
@@ -133,7 +131,8 @@ int main() {
     char cmd[MAXLI];
 
     while (1) {
-        print_prompt();
+        print_working_directory();
+        printf(" § ");
 
         if (fgets(cmd, MAXLI, stdin) == NULL) {
             break; 
