@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 
 #define MAXLI 2048  // longeur maximale d'une ligne de commande
+bool info = true;
 
 // cd
 void change_directory(char *path) {
@@ -13,6 +14,15 @@ void change_directory(char *path) {
         fprintf(stderr, "mbash: cd: missing argument\n");
     } else if (chdir(path) != 0) {
         perror("mbash: cd");
+    } else {
+        if (info) {
+            char cwd[MAXLI];
+            if (getcwd(cwd, sizeof(cwd)) != NULL) {
+                printf("[INFO] Directory changed to %s\n", cwd);
+            } else {
+                perror("mbash: cd info getcwd");
+            }
+        }
     }
 }
 
@@ -61,6 +71,11 @@ void execute(char *cmd) {
 
     // cd
     if (strcmp(args[0], "cd") == 0) {
+        if (info)
+        {
+            fprintf(stdout, "[INFO] cd change the current working directory\n");
+        }
+        
         change_directory(args[1]);
         return;
     }
@@ -70,25 +85,49 @@ void execute(char *cmd) {
         char cwd[MAXLI];
 
         if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            if (info){
+                fprintf(stdout, "[INFO] pwd print the current working directory\n");
+            }
             printf("%s\n", cwd);
         } else {
-            perror("pwd");
+            perror("mbash: pwd");
         }
         return;
     }
+
+    // strcmp : str compare donc si 0 alors c'est égale
+    if (strcmp(args[0], "info") == 0)
+    {
+        info = !info;
+        if (info) {
+            fprintf(stdout, "[INFO] friend is ON\n");
+        } else {
+            fprintf(stdout, "[INFO] daemon is OFF\n");
+        }
+        return;
+    }
+
+    if (strcmp(args[0], "help") == 0) {
+        fprintf(stdout, "mbash: a simple copy of shell\n");
+        fprintf(stdout, "cd [path] : change directory\n");
+        fprintf(stdout, "pwd : print working directory\n");
+        fprintf(stdout, "info : toggle info\n");
+        fprintf(stdout, "exit : exit the shell\n");
+        return;
+    }
+
 
 
     // OTHERS
     pid = fork();
 
-
     if (pid == 0) {
         if (execve(args[0], args, envp) == -1) {
-            perror("mbash");
+            perror("mbash: execve run");
             exit(EXIT_FAILURE);
         }
     } else if (pid < 0) {
-        perror("mbash");
+        perror("mbash : execve fork");
     } else {
         if (!background) {
             waitpid(pid, NULL, 0);
@@ -100,15 +139,17 @@ void execute(char *cmd) {
 
 
 int main() {
-    char cmd[MAXLI];
+    char cmd[MAXLI];  // Le tableau où la commande sera stockée.
 
     while (1) {
         print_prompt();
 
-        if (fgets(cmd, MAXLI, stdin) == NULL) {
+        if (fgets(cmd, MAXLI, stdin) == NULL) { // cmd : Le tableau où la commande sera stockée. / MAXLI : La taille maximale de la commande. / stdin : Indique que l'entrée est l'utilisateur (via le clavier).
             break; 
         }
-        cmd[strcspn(cmd, "\n")] = '\0';
+
+        // strcspn(cmd, "\n") renvoie l'indice du premier caractère \n dans cmd
+        cmd[strcspn(cmd, "\n")] = '\0';  // Ce caractère est remplacé par \0, indiquant la fin de la chaîne.
 
 
         // --> "exit" pour quitter le shell
