@@ -57,6 +57,34 @@ void execute(char *cmd) {
     }
 
 
+    /*
+    MBASH PRIMAL COMMANDS
+    */
+
+    //ls
+    if(strcmp(args[0], "ls") == 0) {
+        struct dirent *entry;
+        DIR *dir;
+
+        // wd si pas de path
+        const char *path = args[1] ? args[1] : ".";
+
+        // ouverture du dossier
+        if ((dir = opendir(path)) == NULL) {
+            perror("mbash");
+            return;
+        }
+
+        // lecture de chaque entrée du wd
+        while ((entry = readdir(dir)) != NULL) {
+            printf("%s\n", entry->d_name);
+        }
+
+        closedir(dir);
+
+        return;
+    }
+
 
     // cd
     if (strcmp(args[0], "cd") == 0) {
