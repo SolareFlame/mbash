@@ -22,7 +22,7 @@ void change_directory(char *path) {
 }
 
 //ls
-void list_directory(char *path) {
+void list_directory(const char *path) {
     struct dirent *entry;
     DIR *dir;
 
