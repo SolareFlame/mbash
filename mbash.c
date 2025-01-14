@@ -4,9 +4,14 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <dirent.h>
 
 #define MAXLI 2048  // longeur maximale d'une ligne de commande
 bool info = true;
+
+/*
+COMMANDS FUNCTIONS
+*/
 
 // cd
 void change_directory(char *path) {
@@ -26,16 +31,34 @@ void change_directory(char *path) {
     }
 }
 
-// prompt printer
-void print_prompt() {
-    char cwd[MAXLI];
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        printf("%s $ ", cwd);
-    } else {
-        printf("$ ");
+//ls
+void list_directory(const char *path) {
+    struct dirent *entry;
+    DIR *dir;
+
+    if ((dir = opendir(path)) == NULL) {
+        perror("mbash");
+        return;
     }
+
+    while ((entry = readdir(dir)) != NULL) {
+        printf("%s ", entry->d_name);
+    }
+    printf("\n");
+
+    closedir(dir);
 }
 
+// pwd
+void print_working_directory() {
+    char cwd[MAXLI];
+
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("%s", cwd);
+    } else {
+        perror("mbash");
+    }
+}
 
 void execute(char *cmd) {
     char *args[MAXLI + 1];
@@ -68,6 +91,16 @@ void execute(char *cmd) {
     }
 
 
+    /*
+    MBASH PRIMAL COMMANDS
+    */
+
+    //ls
+    if(strcmp(args[0], "ls") == 0) {
+        const char *path = args[1] != NULL ? args[1] : ".";
+        list_directory(path);
+        return;
+    }
 
     // cd
     if (strcmp(args[0], "cd") == 0) {
@@ -119,6 +152,14 @@ void execute(char *cmd) {
 
 
     // OTHERS
+        print_working_directory();
+        printf("\n");
+        return;
+    }
+
+    /*
+    /BIN/ COMMANDS CALL
+    */
     pid = fork();
 
     if (pid == 0) {
@@ -133,6 +174,7 @@ void execute(char *cmd) {
             waitpid(pid, NULL, 0);
         }
     }
+    return;
 }
 
 
@@ -142,7 +184,8 @@ int main() {
     char cmd[MAXLI];  // Le tableau où la commande sera stockée.
 
     while (1) {
-        print_prompt();
+        print_working_directory();
+        printf(" § ");
 
         if (fgets(cmd, MAXLI, stdin) == NULL) { // cmd : Le tableau où la commande sera stockée. / MAXLI : La taille maximale de la commande. / stdin : Indique que l'entrée est l'utilisateur (via le clavier).
             break; 
