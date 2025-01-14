@@ -3,10 +3,31 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/wait.h>
 
 #define MAXLI 2048 
 
-void execute_command(char *cmd) {
+// cd
+void change_directory(char *path) {
+    if (path == NULL) {
+        fprintf(stderr, "mbash: cd: missing argument\n");
+    } else if (chdir(path) != 0) {
+        perror("mbash: cd");
+    }
+}
+
+// prompt printer
+void print_prompt() {
+    char cwd[MAXLI];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("%s $ ", cwd);
+    } else {
+        printf("$ ");
+    }
+}
+
+
+void execute(char *cmd) {
     char *args[MAXLI + 1];
     int background = 0;
 
@@ -73,25 +94,6 @@ void execute_command(char *cmd) {
 }
 
 
-// cd
-void change_directory(char *path) {
-    if (path == NULL) {
-        fprintf(stderr, "mbash: cd: missing argument\n");
-    } else if (chdir(path) != 0) {
-        perror("mbash: cd");
-    }
-}
-
-// prompt printer
-void print_prompt() {
-    char cwd[MAXLI];
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        printf("%s $ ", cwd);
-    } else {
-        printf("$ ");
-    }
-}
-
 
 
 int main() {
@@ -111,7 +113,7 @@ int main() {
             break;
         }
 
-        execute_command(cmd);
+        execute(cmd);
     }
 
     return 0;
