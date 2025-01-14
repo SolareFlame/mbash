@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <sys/wait.h>
 
-#define MAXLI 2048 
+#define MAXLI 2048  // longeur maximale d'une ligne de commande
 
 // cd
 void change_directory(char *path) {
@@ -35,17 +35,18 @@ void execute(char *cmd) {
     pid_t pid;
 
 
-    // &
+    // Recherche du caractère & dans la commande pour détecter une exécution en arrière-plan.
     char *esper = strchr(cmd, '&');
-    if (esper != NULL) {
+    if (esper != NULL) {  // Si trouvé, on remplace & par \0 pour que la commande soit correctement interprétée.
         background = 1;
         *esper = '\0';
     }
 
     // split
     int i = 0;
-    char *token = strtok(cmd, " ");
+    char *token = strtok(cmd, " ");  // Utilisation de strtok pour diviser la commande en arguments séparés par des espaces.
     while (token != NULL) {
+        // Les arguments sont stockés dans args, qui sera utilisé pour l'exécution avec execvp.
         args[i++] = token;
         token = strtok(NULL, " ");
     }
