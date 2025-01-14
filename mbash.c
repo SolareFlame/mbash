@@ -29,8 +29,9 @@ void print_prompt() {
 
 void execute(char *cmd) {
     char *args[MAXLI + 1];
-    int background = 0;
+    char *envp[] = {"PATH=/bin:/usr/bin", "HOME=/home/user", NULL};
 
+    int background = 0;
     pid_t pid;
 
 
@@ -79,8 +80,9 @@ void execute(char *cmd) {
     // OTHERS
     pid = fork();
 
+
     if (pid == 0) {
-        if (execvp(args[0], args) == -1) {
+        if (execve(args[0], args, envp) == -1) {
             perror("mbash");
             exit(EXIT_FAILURE);
         }
