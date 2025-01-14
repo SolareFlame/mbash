@@ -21,9 +21,9 @@ void change_directory(char *path) {
 void print_prompt() {
     char cwd[MAXLI];
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        printf("%s $ ", cwd);
+        printf("%s § ", cwd);
     } else {
-        printf("$ ");
+        printf("§ ");
     }
 }
 
@@ -79,7 +79,7 @@ void execute(char *cmd) {
 
         // lecture de chaque entrée du wd
         while ((entry = readdir(dir)) != NULL) {
-            printf("%s", entry->d_name);
+            printf("%s ", entry->d_name);
         }
         printf("\n");
 
