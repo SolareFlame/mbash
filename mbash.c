@@ -79,8 +79,9 @@ void execute(char *cmd) {
 
         // lecture de chaque entrée du wd
         while ((entry = readdir(dir)) != NULL) {
-            printf("%s\n", entry->d_name);
+            printf("%s", entry->d_name);
         }
+        printf("\n");
 
         closedir(dir);
 
