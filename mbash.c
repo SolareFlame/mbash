@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <dirent.h>
 
 #define MAXLI 2048  // longeur maximale d'une ligne de commande
 
