@@ -9,6 +9,7 @@
 
 #define MAXLI 2048  // longeur maximale d'une ligne de commande
 bool info = true;
+pid_t pid;
 
 /*
 COMMANDS FUNCTIONS
