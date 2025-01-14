@@ -87,7 +87,8 @@ void execute(char *cmd) {
 
     //ls
     if(strcmp(args[0], "ls") == 0) {
-        list_directory(args[1]);
+        const char *path = args[1] != NULL ? args[1] : ".";
+        list_directory(path);
         return;
     }
 
@@ -103,7 +104,6 @@ void execute(char *cmd) {
         printf("\n");
         return;
     }
-*
 
     /*
     /BIN/ COMMANDS CALL
