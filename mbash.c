@@ -85,7 +85,7 @@ void list_directory(const char *path, bool detailed) {
         }
         
     }
-
+    printf("\n");
     closedir(dir);
 }
 
@@ -189,7 +189,7 @@ int main() {
     char cmd[MAXLI];
 
     while (1) {
-        printf("\nmbash> ");
+        printf("mbash> ");
         if (fgets(cmd, sizeof(cmd), stdin) == NULL) break;
         cmd[strcspn(cmd, "\n")] = '\0';  // Enlève le saut de ligne
         if (strcmp(cmd, "exit") == 0) break;
