@@ -162,6 +162,7 @@ void execute_with_execve(char *cmd) {
     pid = fork();
     if (pid == 0) {
         // Processus enfant : recherche dans le PATH
+        char *path;
         for (path = strtok(path_env, ":"); path; path = strtok(NULL, ":")) {
             snprintf(full_path, sizeof(full_path), "%s/%s", path, args[0]);
             execve(full_path, args, environ);
