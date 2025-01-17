@@ -9,6 +9,7 @@
 
 #define MAXLI 2048  // longueur maximale d'une ligne de commande
 bool info = true;
+extern char **environ;
 
 /*
 COMMANDS FUNCTIONS
