@@ -166,6 +166,14 @@ void execute_with_execve(char *cmd) {
         return;
     }
 
+    // Chronomètre de l'exécution de la commande
+    clock_t start_time, end_time;
+    double elapsed_time;
+    
+    if (info) {
+        start_time = clock();
+    }
+
     // Exécution des commandes externes
     pid = fork();
     if (pid == 0) {
@@ -181,6 +189,12 @@ void execute_with_execve(char *cmd) {
         perror("mbash: fork");
     } else {
         if (!background) waitpid(pid, NULL, 0);
+    }
+
+    if (info) {
+        end_time = clock();
+        elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+        printf("[INFO] Temps d'exécution : %.2f secondes\n", elapsed_time);
     }
 }
 
