@@ -7,9 +7,8 @@
 #include <dirent.h>
 #include <stdbool.h>
 
-#define MAXLI 2048  // longeur maximale d'une ligne de commande
+#define MAXLI 2048  // longueur maximale d'une ligne de commande
 bool info = true;
-pid_t pid;
 
 /*
 COMMANDS FUNCTIONS
@@ -33,13 +32,13 @@ void change_directory(char *path) {
     }
 }
 
-//ls
+// ls
 void list_directory(const char *path) {
     struct dirent *entry;
     DIR *dir;
 
     if ((dir = opendir(path)) == NULL) {
-        perror("mbash ls");
+        perror("mbash");
         return;
     }
 
@@ -58,150 +57,119 @@ void print_working_directory() {
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
         printf("%s", cwd);
     } else {
-        perror("mbash pwd");
+        perror("mbash");
     }
 }
 
+// Fonction pour exécuter une commande externe en utilisant execve
+void execute_with_execve(char *cmd, char *args[]) {
+    char *env_path = getenv("PATH");
+    if (env_path == NULL) {
+        fprintf(stderr, "mbash: PATH environment variable not set\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Diviser PATH en répertoires
+    char *path_copy = strdup(env_path); // Copie de PATH
+    char *dir = strtok(path_copy, ":");
+    char full_path[MAXLI];
+
+    // Parcourir les répertoires de PATH
+    while (dir != NULL) {
+        snprintf(full_path, sizeof(full_path), "%s/%s", dir, cmd); // Construire le chemin complet
+        execve(full_path, args, environ); // Essayer d'exécuter la commande
+        dir = strtok(NULL, ":");
+    }
+
+    free(path_copy); // Libérer la mémoire
+}
+
+// Fonction principale pour exécuter une commande
 void execute(char *cmd) {
     char *args[MAXLI + 1];
-    char *envp[] = {"PATH=/bin:/usr/bin", "HOME=/home/user", NULL};
-
     int background = 0;
     pid_t pid;
 
-
-    // Recherche du caractère & dans la commande pour détecter une exécution en arrière-plan.
+    // Détection de l'exécution en arrière-plan
     char *esper = strchr(cmd, '&');
-    if (esper != NULL) {  // Si trouvé, on remplace & par \0 pour que la commande soit correctement interprétée.
+    if (esper != NULL) {
         background = 1;
         *esper = '\0';
     }
 
-    // split
+    // Découper la commande en arguments
     int i = 0;
-    char *token = strtok(cmd, " ");  // Utilisation de strtok pour diviser la commande en arguments séparés par des espaces.
+    char *token = strtok(cmd, " ");
     while (token != NULL) {
-        // Les arguments sont stockés dans args, qui sera utilisé pour l'exécution avec execvp.
         args[i++] = token;
         token = strtok(NULL, " ");
     }
     args[i] = NULL;
 
-    // empty
+    // Si la commande est vide
     if (args[0] == NULL) {
         return;
     }
 
-
-    /*
-    MBASH PRIMAL COMMANDS
-    */
-
-    //ls
-    if(strcmp(args[0], "ls") == 0) {
+    // Commandes internes
+    if (strcmp(args[0], "ls") == 0) {
         const char *path = args[1] != NULL ? args[1] : ".";
         list_directory(path);
         return;
     }
-
-    // cd
     if (strcmp(args[0], "cd") == 0) {
-        if (info)
-        {
-            fprintf(stdout, "[INFO] cd change the current working directory\n");
-        }
-        
         change_directory(args[1]);
         return;
     }
-
-    // pwd
     if (strcmp(args[0], "pwd") == 0) {
-        char cwd[MAXLI];
-
-        if (getcwd(cwd, sizeof(cwd)) != NULL) {
-            if (info){
-                fprintf(stdout, "[INFO] pwd print the current working directory\n");
-            }
-            printf("%s\n", cwd);
-        } else {
-            perror("mbash: pwd");
-        }
-        return;
-    }
-
-    // strcmp : str compare donc si 0 alors c'est égale
-    if (strcmp(args[0], "info") == 0)
-    {
-        info = !info;
-        if (info) {
-            fprintf(stdout, "[INFO] friend is ON\n");
-        } else {
-            fprintf(stdout, "[INFO] daemon is OFF\n");
-        }
-        return;
-    }
-
-    if (strcmp(args[0], "help") == 0) {
-        fprintf(stdout, "mbash: a simple copy of shell\n");
-        fprintf(stdout, "cd [path] : change directory\n");
-        fprintf(stdout, "pwd : print working directory\n");
-        fprintf(stdout, "info : toggle info\n");
-        fprintf(stdout, "exit : exit the shell\n");
-        return;
-    }
-
-
-
-    // OTHERS
         print_working_directory();
         printf("\n");
         return;
     }
+    if (strcmp(args[0], "info") == 0) {
+        info = !info;
+        printf("[INFO] %s\n", info ? "ON" : "OFF");
+        return;
+    }
+    if (strcmp(args[0], "help") == 0) {
+        printf("mbash: a simple copy of shell\n");
+        printf("cd [path] : change directory\n");
+        printf("pwd : print working directory\n");
+        printf("info : toggle info messages\n");
+        printf("exit : exit the shell\n");
+        return;
+    }
 
-    /*
-    /BIN/ COMMANDS CALL
-    */
+    // Commandes externes
     pid = fork();
-
     if (pid == 0) {
-        if (execve(args[0], args, envp) == -1) {
-            perror("mbash: execve run");
-            exit(EXIT_FAILURE);
-        }
+        // Exécuter avec execve et gestion de PATH
+        execute_with_execve(args[0], args);
+        // Si execve échoue, afficher une erreur
+        fprintf(stderr, "mbash: %s: command not found\n", args[0]);
+        exit(EXIT_FAILURE);
     } else if (pid < 0) {
-        perror("mbash : execve fork");
+        perror("mbash: fork");
     } else {
         if (!background) {
             waitpid(pid, NULL, 0);
         }
     }
-    return;
 }
 
-
-
-
 int main() {
-    char cmd[MAXLI];  // Le tableau où la commande sera stockée.
+    char cmd[MAXLI];
 
     while (1) {
         print_working_directory();
         printf(" § ");
-
-        if (fgets(cmd, MAXLI, stdin) == NULL) { // cmd : Le tableau où la commande sera stockée. / MAXLI : La taille maximale de la commande. / stdin : Indique que l'entrée est l'utilisateur (via le clavier).
-            break; 
+        if (fgets(cmd, MAXLI, stdin) == NULL) {
+            break;
         }
-
-        // strcspn(cmd, "\n") renvoie l'indice du premier caractère \n dans cmd
-        cmd[strcspn(cmd, "\n")] = '\0';  // Ce caractère est remplacé par \0, indiquant la fin de la chaîne.
-
-
-        // --> "exit" pour quitter le shell
+        cmd[strcspn(cmd, "\n")] = '\0'; // Supprimer le \n
         if (strcmp(cmd, "exit") == 0) {
             break;
         }
-
         execute(cmd);
     }
 
