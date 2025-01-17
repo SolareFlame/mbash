@@ -80,8 +80,10 @@ void list_directory(const char *path, bool detailed) {
         if (detailed)
         {
             printf(" %s ", entry->d_name);
+        } else {
+            printf(" %s\n", entry->d_name);
         }
-        printf(" %s\n", entry->d_name);
+        
     }
 
     closedir(dir);
