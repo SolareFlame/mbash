@@ -39,7 +39,7 @@ void list_directory(const char *path) {
     DIR *dir;
 
     if ((dir = opendir(path)) == NULL) {
-        perror("mbash");
+        perror("mbash ls");
         return;
     }
 
@@ -58,7 +58,7 @@ void print_working_directory() {
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
         printf("%s", cwd);
     } else {
-        perror("mbash");
+        perror("mbash pwd");
     }
 }
 
