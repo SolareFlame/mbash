@@ -21,14 +21,17 @@ int history_pos = 0;
 void change_directory(char *path) {
     if (path == NULL) {
         fprintf(stderr, "mbash: cd: missing argument\n");
-    } else if (chdir(path) != 0) {
-        perror("mbash: cd");
-    } else if (info) {
-        char cwd[MAXLI];
-        if (getcwd(cwd, sizeof(cwd)) != NULL) {
-            printf("[INFO] Répertoire changé : %s\n", cwd);
-        } else {
+    } else {
+        // Vérifie si le répertoire existe
+        if (chdir(path) != 0) {
             perror("mbash: cd");
+        } else if (info) {
+            char cwd[MAXLI];
+            if (getcwd(cwd, sizeof(cwd)) != NULL) {
+                printf("[INFO] Répertoire changé : %s\n", cwd);
+            } else {
+                perror("mbash: cd");
+            }
         }
     }
 }
