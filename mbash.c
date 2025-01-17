@@ -6,11 +6,16 @@
 #include <sys/wait.h>
 #include <dirent.h>
 #include <stdbool.h>
-#include <readline/readline.h>
-#include <readline/history.h>
+#include <termios.h>
+#include <fcntl.h>
 
 #define MAXLI 2048  // Longueur maximale d'une ligne de commande
+#define HIST_SIZE 100
+
 bool info = true;
+char *history[HIST_SIZE];  // Tableau pour stocker l'historique des commandes
+int history_index = 0;
+int history_pos = 0;
 
 // Fonction pour changer de répertoire
 void change_directory(char *path) {
@@ -126,12 +131,72 @@ void execute(char *cmd) {
     }
 }
 
+// Fonction pour configurer le terminal pour lire les touches sans attendre un \n
+void set_input_mode() {
+    struct termios term;
+    tcgetattr(STDIN_FILENO, &term);
+    term.c_lflag &= ~(ICANON | ECHO);  // Mode non canonique, pas d'écho
+    tcsetattr(STDIN_FILENO, TCSANOW, &term);
+}
+
+// Fonction pour lire une touche sans attendre un retour chariot
+int get_key() {
+    int ch = getchar();
+    return ch;
+}
+
+// Fonction pour récupérer l'entrée avec gestion des flèches et historique
+void get_input(char *cmd) {
+    int ch;
+    int index = 0;
+    int max_len = MAXLI - 1;
+    while ((ch = get_key()) != '\n' && ch != EOF) {
+        if (ch == 27) {  // Détection des séquences d'échappement (flèches)
+            ch = get_key();  // Récupérer la seconde touche (flèche gauche, droite, haut, bas)
+            if (ch == 91) {
+                ch = get_key();  // Code pour flèche
+                if (ch == 65) {  // Flèche haut
+                    if (history_pos > 0) {
+                        history_pos--;
+                        strcpy(cmd, history[history_pos]);
+                        printf("\r%s", cmd);
+                        fflush(stdout);
+                    }
+                } else if (ch == 66) {  // Flèche bas
+                    if (history_pos < history_index) {
+                        history_pos++;
+                        strcpy(cmd, history[history_pos]);
+                        printf("\r%s", cmd);
+                        fflush(stdout);
+                    } else {
+                        memset(cmd, 0, sizeof(cmd));
+                        printf("\r");
+                    }
+                }
+            }
+        } else if (ch == 127) {  // Backspace
+            if (index > 0) {
+                cmd[--index] = '\0';
+                printf("\r%s", cmd);
+                fflush(stdout);
+            }
+        } else if (index < max_len) {
+            cmd[index++] = ch;
+            cmd[index] = '\0';
+            printf("%c", ch);
+            fflush(stdout);
+        }
+    }
+    cmd[index] = '\0';
+}
+
 // Fonction principale
 int main() {
-    char *cmd;
+    char cmd[MAXLI];
     char prompt[MAXLI];
 
-    using_history();  // Initialisation de l'historique
+    // Initialisation du terminal
+    set_input_mode();
 
     while (1) {
         // Affichage du prompt avec le répertoire courant
@@ -142,26 +207,32 @@ int main() {
             strcpy(prompt, "mbash> ");
         }
 
-        // Lecture de la commande avec historique
-        cmd = readline(prompt);
-        if (!cmd) {
-            break;  // Ctrl+D pour quitter
-        }
+        // Affichage du prompt
+        printf("%s", prompt);
+        fflush(stdout);
 
-        // Ajout à l'historique si non vide
-        if (*cmd) {
-            add_history(cmd);
-        }
+        // Récupérer l'entrée utilisateur avec gestion des flèches
+        get_input(cmd);
 
         // Gestion de la commande "exit"
         if (strcmp(cmd, "exit") == 0) {
-            free(cmd);
             break;
+        }
+
+        // Ajouter la commande à l'historique
+        if (history_index < HIST_SIZE) {
+            history[history_index] = strdup(cmd);
+            history_index++;
+            history_pos = history_index;
         }
 
         // Exécution de la commande
         execute(cmd);
-        free(cmd);
+    }
+
+    // Libérer l'historique
+    for (int i = 0; i < history_index; i++) {
+        free(history[i]);
     }
 
     return 0;
