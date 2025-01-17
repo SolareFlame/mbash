@@ -21,17 +21,14 @@ int history_pos = 0;
 void change_directory(char *path) {
     if (path == NULL) {
         fprintf(stderr, "mbash: cd: missing argument\n");
-    } else {
-        // Vérifie si le répertoire existe
-        if (chdir(path) != 0) {
+    } else if (chdir(path) != 0) {
+        perror("mbash: cd");
+    } else if (info) {
+        char cwd[MAXLI];
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            printf("[INFO] Répertoire changé : %s\n", cwd);
+        } else {
             perror("mbash: cd");
-        } else if (info) {
-            char cwd[MAXLI];
-            if (getcwd(cwd, sizeof(cwd)) != NULL) {
-                printf("[INFO] Répertoire changé : %s\n", cwd);
-            } else {
-                perror("mbash: cd");
-            }
         }
     }
 }
@@ -166,7 +163,7 @@ void get_input(char *cmd) {
                         fflush(stdout);
                     }
                 } else if (ch == 66) {  // Flèche bas
-                    if (history_pos < history_index - 1) {
+                    if (history_pos < history_index) {
                         history_pos++;
                         strcpy(cmd, history[history_pos]);
                         printf("\r%s", cmd);
@@ -191,7 +188,6 @@ void get_input(char *cmd) {
         }
     }
     cmd[index] = '\0';
-    printf("\n");  // Retour à la ligne après la commande
 }
 
 // Fonction principale
