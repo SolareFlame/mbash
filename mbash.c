@@ -15,6 +15,10 @@ extern char **environ;
 
 bool info = true;
 
+// Chronomètre de l'exécution de la commande
+    clock_t debut, fin;
+    double temp;
+
 /*
  * Commande pour changer de dossier
  */
@@ -145,10 +149,6 @@ void execute_with_execve(char *cmd) {
     char full_path[MAXLI];
     int background = 0;
     pid_t pid;
-
-    // Chronomètre de l'exécution de la commande
-    clock_t debut, fin;
-    double temp;
 
     // Découper la commande en arguments
     int i = 0;
