@@ -147,7 +147,7 @@ void execute_with_execve(char *cmd) {
     char *path_env = getenv("PATH");
     char *path_dirs[MAXLI];
     char full_path[MAXLI];
-    int background = 0;
+    bool background = 0;
     pid_t pid;
 
     // Découper la commande en arguments
@@ -219,16 +219,19 @@ void execute_with_execve(char *cmd) {
         }
         perror("mbash");
         exit(EXIT_FAILURE);
-    } else if (pid < 0) {
+    } else if (pid < 0) {  // Erreur
         perror("mbash: fork");
-    } else {
-        if (!background) waitpid(pid, NULL, 0);
+    } else {  // Processus parent
+        if (!background)  
+            waitpid(pid, NULL, 0);  // bloque le parent jusqu'a fermeture du fils
+        else
+            waitpid(pid, NULL, WNOHANG);  // ne bloque pas le parent
     }
 
     if (info) {
         fin = clock();
         temp = ((double)(fin - debut)) / CLOCKS_PER_SEC;
-        printf("[INFO] Temps d'exécution : %.2f secondes\n", temp);
+        printf("[INFO] Temps d'exécution : %.2f secondes\n", temp);  // 2f limite à 2 chiffres après la virgule
     }
 }
 
@@ -241,9 +244,9 @@ int main() {
     while (1) {
         printf("mbash> ");
         if (fgets(cmd, sizeof(cmd), stdin) == NULL) break;
-        cmd[strcspn(cmd, "\n")] = '\0';  // Enlève le saut de ligne
+            cmd[strcspn(cmd, "\n")] = '\0';  // Enlève le saut de ligne
         if (strcmp(cmd, "exit") == 0) break;
-        execute_with_execve(cmd);
+            execute_with_execve(cmd);
     }
 
     return 0;
