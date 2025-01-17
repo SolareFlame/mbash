@@ -6,41 +6,32 @@
 #include <sys/wait.h>
 #include <dirent.h>
 #include <stdbool.h>
-#include <sys/stat.h>
-#include <time.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
-#define MAXLI 2048
-
-extern char **environ;
-
+#define MAXLI 2048  // Longueur maximale d'une ligne de commande
 bool info = true;
 
-/*
- * Commande pour changer de dossier
- */
+// Fonction pour changer de répertoire
 void change_directory(char *path) {
     if (path == NULL) {
-        fprintf(stderr, "mbash: cd: argument manquant\n");
+        fprintf(stderr, "mbash: cd: missing argument\n");
     } else if (chdir(path) != 0) {
         perror("mbash: cd");
     } else if (info) {
         char cwd[MAXLI];
         if (getcwd(cwd, sizeof(cwd)) != NULL) {
-            printf("[INFO] Dossier changé en %s\n", cwd);
+            printf("[INFO] Répertoire changé : %s\n", cwd);
         } else {
-            perror("mbash: cd info getcwd");
+            perror("mbash: cd");
         }
     }
 }
 
-/*
- * Liste les fichiers (mode simple ou détaillé selon `-l`)
- */
+// Fonction pour afficher les fichiers
 void list_directory(const char *path, bool detailed) {
     struct dirent *entry;
     DIR *dir;
-    struct stat file_stat;
-
     if ((dir = opendir(path)) == NULL) {
         perror("mbash");
         return;
@@ -48,65 +39,31 @@ void list_directory(const char *path, bool detailed) {
 
     while ((entry = readdir(dir)) != NULL) {
         if (detailed) {
-            char full_path[MAXLI];
-            snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
-
-            if (stat(full_path, &file_stat) == -1) {
-                perror("mbash: stat");
-                continue;
-            }
-
-            // Permissions
-            printf((S_ISDIR(file_stat.st_mode)) ? "d" : "-");
-            printf((file_stat.st_mode & S_IRUSR) ? "r" : "-");
-            printf((file_stat.st_mode & S_IWUSR) ? "w" : "-");
-            printf((file_stat.st_mode & S_IXUSR) ? "x" : "-");
-            printf((file_stat.st_mode & S_IRGRP) ? "r" : "-");
-            printf((file_stat.st_mode & S_IWGRP) ? "w" : "-");
-            printf((file_stat.st_mode & S_IXGRP) ? "x" : "-");
-            printf((file_stat.st_mode & S_IROTH) ? "r" : "-");
-            printf((file_stat.st_mode & S_IWOTH) ? "w" : "-");
-            printf((file_stat.st_mode & S_IXOTH) ? "x" : "-");
-
-            // Liens, taille et date
-            printf(" %ld", file_stat.st_nlink);
-            printf(" %ld", file_stat.st_size);
-
-            char time_buf[80];
-            strftime(time_buf, sizeof(time_buf), "%b %d %H:%M", localtime(&file_stat.st_mtime));
-            printf(" %s", time_buf);
+            printf("%s\n", entry->d_name);  // Affichage vertical
+        } else {
+            printf("%s ", entry->d_name);  // Affichage horizontal
         }
-
-        printf(" %s\n", entry->d_name);
     }
-
+    if (!detailed) {
+        printf("\n");  // Ligne vide pour l'affichage horizontal
+    }
     closedir(dir);
 }
 
-/*
- * Commande pour afficher le dossier courant
- */
-void print_working_directory() {
-    char cwd[MAXLI];
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        printf("%s\n", cwd);
-    } else {
-        perror("mbash");
-    }
-}
-
-/*
- * Execute une commande avec recherche dans le PATH
- */
-void execute_with_execve(char *cmd) {
+// Fonction pour exécuter une commande
+void execute(char *cmd) {
     char *args[MAXLI + 1];
-    char *path_env = getenv("PATH");
-    char *path_dirs[MAXLI];
-    char full_path[MAXLI];
+    char *envp[] = {"PATH=/bin:/usr/bin", NULL};
     int background = 0;
-    pid_t pid;
 
-    // Découper la commande en arguments
+    // Gestion des commandes en arrière-plan
+    char *esper = strchr(cmd, '&');
+    if (esper != NULL) {
+        background = 1;
+        *esper = '\0';
+    }
+
+    // Découpage de la commande en arguments
     int i = 0;
     char *token = strtok(cmd, " ");
     while (token != NULL) {
@@ -115,79 +72,96 @@ void execute_with_execve(char *cmd) {
     }
     args[i] = NULL;
 
-    // Vérifie si la commande doit s'exécuter en arrière-plan
-    if (args[i - 1] && strcmp(args[i - 1], "&") == 0) {
-        background = 1;
-        args[--i] = NULL;
+    // Si aucune commande n'est entrée
+    if (args[0] == NULL) {
+        return;
     }
-
-    if (args[0] == NULL) return;
 
     // Commandes internes
     if (strcmp(args[0], "cd") == 0) {
         change_directory(args[1]);
         return;
-    } else if (strcmp(args[0], "pwd") == 0) {
-        print_working_directory();
+    }
+    if (strcmp(args[0], "ls") == 0) {
+        bool detailed = (args[1] != NULL && strcmp(args[1], "-l") == 0);
+        list_directory(args[1] ? args[1] : ".", detailed);
         return;
-    } else if (strcmp(args[0], "info") == 0) {
-        info = !info;
-        printf("[INFO] Mode info %s\n", info ? "ON" : "OFF");
-        return;
-    } else if (strcmp(args[0], "help") == 0) {
-        printf("Commandes internes :\n");
-        printf("cd [path] : Changer de dossier\n");
-        printf("pwd : Affiche le dossier courant\n");
-        printf("info : Active/Désactive le mode info\n");
-        printf("help : Affiche ce message\n");
-        return;
-    } else if (strcmp(args[0], "ls") == 0) {
-        const char *path = ".";
-        bool detailed = false;
-
-        // Analyse des options pour `ls`
-        for (int j = 1; args[j] != NULL; j++) {
-            if (strcmp(args[j], "-l") == 0) {
-                detailed = true;
-            } else {
-                path = args[j];
-            }
+    }
+    if (strcmp(args[0], "pwd") == 0) {
+        char cwd[MAXLI];
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            printf("%s\n", cwd);
+        } else {
+            perror("mbash: pwd");
         }
-
-        list_directory(path, detailed);
+        return;
+    }
+    if (strcmp(args[0], "info") == 0) {
+        info = !info;
+        printf("[INFO] Mode info %s\n", info ? "activé" : "désactivé");
+        return;
+    }
+    if (strcmp(args[0], "help") == 0) {
+        printf("mbash: commandes disponibles :\n");
+        printf("  cd [path] : changer de répertoire\n");
+        printf("  ls [-l] [path] : lister les fichiers\n");
+        printf("  pwd : afficher le répertoire courant\n");
+        printf("  info : activer/désactiver le mode info\n");
+        printf("  exit : quitter le shell\n");
         return;
     }
 
-    // Exécution des commandes externes
-    pid = fork();
+    // Commandes externes
+    pid_t pid = fork();
     if (pid == 0) {
-        // Processus enfant : recherche dans le PATH
-        char *path;
-        for (path = strtok(path_env, ":"); path; path = strtok(NULL, ":")) {
-            snprintf(full_path, sizeof(full_path), "%s/%s", path, args[0]);
-            execve(full_path, args, environ);
-        }
-        perror("mbash");
+        execve(args[0], args, envp);
+        perror("mbash: execve");
         exit(EXIT_FAILURE);
     } else if (pid < 0) {
         perror("mbash: fork");
     } else {
-        if (!background) waitpid(pid, NULL, 0);
+        if (!background) {
+            waitpid(pid, NULL, 0);
+        }
     }
 }
 
-/*
- * Fonction principale
- */
+// Fonction principale
 int main() {
-    char cmd[MAXLI];
+    char *cmd;
+    char prompt[MAXLI];
+
+    using_history();  // Initialisation de l'historique
 
     while (1) {
-        printf("mbash> ");
-        if (fgets(cmd, sizeof(cmd), stdin) == NULL) break;
-        cmd[strcspn(cmd, "\n")] = '\0';  // Enlève le saut de ligne
-        if (strcmp(cmd, "exit") == 0) break;
-        execute_with_execve(cmd);
+        // Affichage du prompt avec le répertoire courant
+        char cwd[MAXLI];
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            snprintf(prompt, sizeof(prompt), "%s mbash> ", cwd);
+        } else {
+            strcpy(prompt, "mbash> ");
+        }
+
+        // Lecture de la commande avec historique
+        cmd = readline(prompt);
+        if (!cmd) {
+            break;  // Ctrl+D pour quitter
+        }
+
+        // Ajout à l'historique si non vide
+        if (*cmd) {
+            add_history(cmd);
+        }
+
+        // Gestion de la commande "exit"
+        if (strcmp(cmd, "exit") == 0) {
+            free(cmd);
+            break;
+        }
+
+        // Exécution de la commande
+        execute(cmd);
+        free(cmd);
     }
 
     return 0;
