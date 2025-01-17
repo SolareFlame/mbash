@@ -19,6 +19,10 @@ bool info = true;
  * Commande pour changer de dossier
  */
 void change_directory(char *path) {
+    if (info) {
+        debut = clock();
+    }
+
     if (path == NULL) {
         fprintf(stderr, "mbash: cd: argument manquant\n");
     } else if (chdir(path) != 0) {
@@ -27,6 +31,13 @@ void change_directory(char *path) {
         char cwd[MAXLI];
         if (getcwd(cwd, sizeof(cwd)) != NULL) {
             printf("[INFO] Dossier changé en %s\n", cwd);
+
+            if (info) {
+                fin = clock();
+                temp = ((double)(fin - debut)) / CLOCKS_PER_SEC;
+                printf("[INFO] Temps d'exécution : %.2f secondes\n", temp);
+            }
+
         } else {
             perror("mbash: cd info getcwd");
         }
@@ -40,6 +51,10 @@ void list_directory(const char *path, bool detailed) {
     struct dirent *entry;
     DIR *dir;
     struct stat file_stat;
+
+    if (info) {
+        debut = clock();
+    }
 
     if ((dir = opendir(path)) == NULL) {
         perror("mbash");
@@ -86,6 +101,13 @@ void list_directory(const char *path, bool detailed) {
         
     }
     printf("\n");
+
+    if (info) {
+        fin = clock();
+        temp = ((double)(fin - debut)) / CLOCKS_PER_SEC;
+        printf("[INFO] Temps d'exécution : %.2f secondes\n", temp);
+    }
+
     closedir(dir);
 }
 
@@ -94,8 +116,20 @@ void list_directory(const char *path, bool detailed) {
  */
 void print_working_directory() {
     char cwd[MAXLI];
+
+    if (info) {
+        debut = clock();
+    }
+
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
         printf("%s\n", cwd);
+
+        if (info) {
+            fin = clock();
+            temp = ((double)(fin - debut)) / CLOCKS_PER_SEC;
+            printf("[INFO] Temps d'exécution : %.2f secondes\n", temp);
+        }
+
     } else {
         perror("mbash");
     }
@@ -111,6 +145,10 @@ void execute_with_execve(char *cmd) {
     char full_path[MAXLI];
     int background = 0;
     pid_t pid;
+
+    // Chronomètre de l'exécution de la commande
+    clock_t debut, fin;
+    double temp;
 
     // Découper la commande en arguments
     int i = 0;
@@ -165,13 +203,9 @@ void execute_with_execve(char *cmd) {
         list_directory(path, detailed);
         return;
     }
-
-    // Chronomètre de l'exécution de la commande
-    clock_t start_time, end_time;
-    double elapsed_time;
     
     if (info) {
-        start_time = clock();
+        debut = clock();
     }
 
     // Exécution des commandes externes
@@ -192,9 +226,9 @@ void execute_with_execve(char *cmd) {
     }
 
     if (info) {
-        end_time = clock();
-        elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
-        printf("[INFO] Temps d'exécution : %.2f secondes\n", elapsed_time);
+        fin = clock();
+        temp = ((double)(fin - debut)) / CLOCKS_PER_SEC;
+        printf("[INFO] Temps d'exécution : %.2f secondes\n", temp);
     }
 }
 
