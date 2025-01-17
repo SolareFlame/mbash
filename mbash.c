@@ -143,8 +143,10 @@ void execute_with_execve(char *cmd) {
     } else if (strcmp(args[0], "help") == 0) {
         printf("Commandes internes :\n");
         printf("cd [path] : Changer de dossier\n");
+        printf("ls [-l] [path] : Liste les fichiers\n");
         printf("pwd : Affiche le dossier courant\n");
         printf("info : Active/Désactive le mode info\n");
+        printf("exit : Quitte le shell\n");
         printf("help : Affiche ce message\n");
         return;
     } else if (strcmp(args[0], "ls") == 0) {
