@@ -77,6 +77,10 @@ void list_directory(const char *path, bool detailed) {
             printf(" %s", time_buf);
         }
 
+        if (detailed)
+        {
+            printf(" %s ", entry->d_name);
+        }
         printf(" %s\n", entry->d_name);
     }
 
