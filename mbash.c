@@ -163,7 +163,7 @@ void get_input(char *cmd) {
                         fflush(stdout);
                     }
                 } else if (ch == 66) {  // Flèche bas
-                    if (history_pos < history_index) {
+                    if (history_pos < history_index - 1) {
                         history_pos++;
                         strcpy(cmd, history[history_pos]);
                         printf("\r%s", cmd);
@@ -188,6 +188,7 @@ void get_input(char *cmd) {
         }
     }
     cmd[index] = '\0';
+    printf("\n");  // Retour à la ligne après la commande
 }
 
 // Fonction principale
